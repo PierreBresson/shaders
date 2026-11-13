@@ -128,6 +128,7 @@ const brandPalette: Gradient = {
 export const silkFolds: ShaderDef = {
   id: 'silk-folds',
   name: 'Silk Folds',
+  category: 'generative',
   description: 'Soft satin-like diagonal folds with film grain.',
   wgsl,
   // 4 vec4 + 2 vec4 positions + 8 vec4 colors = 14 * 16 = 224 bytes

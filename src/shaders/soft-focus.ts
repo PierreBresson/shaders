@@ -116,6 +116,7 @@ fn fs_main(in : VOut) -> @location(0) vec4f {
 export const softFocus: ShaderDef = {
   id: 'soft-focus',
   name: 'Soft Focus',
+  category: 'photo',
   description: 'Dreamy blur, haze and film grain over your photo.',
   wgsl,
   uniformBytes: 4 * 16,

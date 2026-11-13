@@ -3,6 +3,7 @@ import { deleteImage, getImage, putImage } from './imageStore'
 import { imageKeys, Renderer, type ImageSet } from './renderer'
 import { buildSdf, decodeImage } from './sdf'
 import { shaders } from './shaders'
+import { CATEGORY_LABELS } from './types'
 import type { ColorParam, Gradient, GradientParam, GradientStop, ImageParam, NumberParam, ParamValues, RGB, ShaderDef } from './types'
 
 // ---------- helpers ----------
@@ -146,8 +147,20 @@ function showFatal(message: string) {
 
 // ---------- controls ----------
 
+// Collapsible panel sections; which ones are folded is remembered by title.
+const collapsedSections = new Set<string>()
 function section(title: string, ...children: Node[]) {
-  return el('section', { class: 'section' }, el('h3', { textContent: title }), ...children)
+  const details = el(
+    'details',
+    { class: 'section', open: !collapsedSections.has(title) },
+    el('summary', {}, el('h3', { textContent: title })),
+    ...children,
+  )
+  details.addEventListener('toggle', () => {
+    if (details.open) collapsedSections.delete(title)
+    else collapsedSections.add(title)
+  })
+  return details
 }
 
 function numberControl(key: string, def: NumberParam, values: ParamValues, onChange: () => void, extra?: HTMLElement) {
@@ -518,7 +531,18 @@ async function main() {
   new ResizeObserver(layoutCanvas).observe(stage)
 
   // --- Shader picker ---
-  const shaderSelect = el('select', {}, ...shaders.map((s) => el('option', { value: s.id, textContent: s.name })))
+  const categories = [...new Set(shaders.map((s) => s.category))]
+  const shaderSelect = el(
+    'select',
+    {},
+    ...categories.map((c) =>
+      el(
+        'optgroup',
+        { label: CATEGORY_LABELS[c] },
+        ...shaders.filter((s) => s.category === c).map((s) => el('option', { value: s.id, textContent: s.name })),
+      ),
+    ),
+  )
   shaderSelect.value = state.shaderId
   const shaderDesc = el('p', { class: 'muted' })
   shaderSelect.addEventListener('change', () => {

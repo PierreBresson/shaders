@@ -59,9 +59,19 @@ export type ImageSizes = Record<string, { width: number; height: number } | null
  *
  * fs_main returns straight (non-premultiplied) alpha; alpha < 1 gives a transparent PNG.
  */
+/** Picker section: effects on an uploaded photo, generated images, or effects on a logo. */
+export type ShaderCategory = 'photo' | 'generative' | 'logo'
+
+export const CATEGORY_LABELS: Record<ShaderCategory, string> = {
+  photo: 'Photo effects',
+  generative: 'Generative',
+  logo: 'Logo',
+}
+
 export interface ShaderDef {
   id: string
   name: string
+  category: ShaderCategory
   description: string
   /** Bump when defaults change, so autosaved values from older versions are reset. */
   version?: number
