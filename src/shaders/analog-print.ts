@@ -15,7 +15,7 @@ struct U {
   grade  : vec4f, // warmth, softness, black ink amount, seed
   screen : vec4f, // pattern, lines per short side, screen angle (rad), dot roughness
   print  : vec4f, // misregistration, ink unevenness, paper texture, dust
-  paper  : vec4f, // paper color (display rgb), unused
+  paper  : vec4f, // paper color (display rgb), rosette (plate angle spread)
   film   : vec4f, // grain, grain size, unused x2
 };
 
@@ -185,14 +185,26 @@ fn fs_main(in : VOut) -> @location(0) vec4f {
     fbm(pn * 5.0 + seed + 37.0)) - 0.5;
   cmyk = clamp(cmyk * (1.0 + blot * uneven * 0.6), vec4f(0.0), vec4f(1.0));
 
-  // Halftone screens at the classic plate angles (C 15°, M 75°, Y 0°, K 45°).
+  // Halftone screens. Rosette 1 = the classic plate angles (C 15°, M 75°, Y 0°, K 45°),
+  // which shows colored rosettes; 0 = all plates on one 45° screen, a mono-looking texture.
+  // In between gives moiré, so the UI only offers 0 or 1.
   let p = pn * lines;
-  let dots = vec4f(
-    screenDot(p, angle + 0.2618, cmyk.x, rough),
-    screenDot(p + 0.31, angle + 1.309, cmyk.y, rough),
-    screenDot(p + 0.57, angle, cmyk.z, rough),
-    screenDot(p + 0.13, angle + 0.7854, cmyk.w, rough));
-  let cov = mix(cmyk, dots, pattern);
+  let ro = u.paper.w;
+  let base = angle + 0.7854;
+  // 2×2 supersampling keeps small dots from aliasing into a grid.
+  let px = lines / mn;
+  var dots = vec4f(0.0);
+  for (var i = 0; i < 4; i = i + 1) {
+    let sp = p + (vec2f(f32(i & 1), f32(i >> 1u)) - 0.5) * 0.5 * px;
+    dots = dots + vec4f(
+      screenDot(sp + 0.08 * ro, base - 0.5236 * ro, cmyk.x, rough),
+      screenDot(sp + 0.31 * ro, base + 0.5236 * ro, cmyk.y, rough),
+      screenDot(sp + 0.57 * ro, base - 0.7854 * ro, cmyk.z, rough),
+      screenDot(sp, base, cmyk.w, rough));
+  }
+  dots = dots * 0.25;
+  // Dots under ~2 px can't be drawn at all (tiny previews): fade back to continuous tone.
+  let cov = mix(cmyk, dots, pattern * smoothstep(1.2, 2.2, 1.0 / px));
 
   // Ink on paper (subtractive). With continuous coverage this reproduces the graded photo.
   let paperCol = u.paper.xyz;
@@ -250,8 +262,9 @@ export const analogPrint: ShaderDef = {
   params: {
     photo: { type: 'image', label: 'Photo', matchOutputSize: true },
     pattern: { type: 'number', label: 'Print pattern', group: 'Print', defaultValue: 0.35, min: 0, max: 1, step: 0.01 },
-    lines: { type: 'number', label: 'Dot size', group: 'Print', defaultValue: 0.45, min: 0, max: 1, step: 0.01 },
+    lines: { type: 'number', label: 'Dot size', group: 'Print', defaultValue: 0.25, min: 0, max: 1, step: 0.01 },
     angle: { type: 'number', label: 'Screen angle', group: 'Print', defaultValue: 0, min: -45, max: 45, step: 1, unit: '°' },
+    rosette: { type: 'number', label: 'Color rosette (off / on)', group: 'Print', defaultValue: 0, min: 0, max: 1, step: 1 },
     roughness: { type: 'number', label: 'Dot roughness', group: 'Print', defaultValue: 0.4, min: 0, max: 1, step: 0.01 },
     black: { type: 'number', label: 'Black ink', group: 'Print', defaultValue: 0.8, min: 0, max: 1, step: 0.01 },
     misregistration: { type: 'number', label: 'Misregistration', group: 'Print', defaultValue: 0.25, min: 0, max: 1, step: 0.01 },
@@ -293,7 +306,7 @@ export const analogPrint: ShaderDef = {
       n('warmth'), n('softness'), n('black'), n('seed'),
       n('pattern'), lines, (n('angle') * Math.PI) / 180, n('roughness'),
       n('misregistration'), n('uneven'), n('paperTexture'), n('dust'),
-      paper.r, paper.g, paper.b, 0,
+      paper.r, paper.g, paper.b, n('rosette'),
       n('grain'), n('grainSize'), 0, 0,
     ])
   },
