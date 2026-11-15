@@ -1,5 +1,6 @@
 import type { ShaderDef } from '../types'
 import { analogPrint } from './analog-print'
+import { filmScan } from './film-scan'
 import { glassLogo } from './glass-logo'
 import { amberBeam, emberRays, horizonFlare } from './light-presets'
 import { bokeh, frostedGlass, motionPan } from './photo-blur'
@@ -15,6 +16,7 @@ export const shaders: ShaderDef[] = [
   bokeh,
   motionPan,
   analogPrint,
+  filmScan,
   // Generative (no image)
   silkFolds,
   emberRays,
